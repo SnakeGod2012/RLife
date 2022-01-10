@@ -1,0 +1,870 @@
+local module  = {
+	["Order_Queue"] = {};
+	["Platter_Queue"] = {};
+	------------------------
+	Cups = 50; 
+	MaxCups = 50;
+	Plates = 50; 
+	MaxPlates = 50;
+	Cooking_Sheets = 50; 
+	Max_Cooking_Sheets = 50;
+	Dirty_Cups = 0;
+	Max_Dirty_Cups = 20;
+	Max_Dirty_Cooking_Sheets = 20;
+	Dirty_Cooking_Sheets = 0;
+}
+
+local function TranslateUnderscore(Text)
+	local String = Text;
+	local slen = string.len(String);
+	for i = 1, slen do
+		if string.sub(String, i, i) == "_" then
+			String = string.sub(String, 1, i-1).." "..string.sub(String, i+1, slen)
+		end
+	end
+	return String;
+end
+
+function module.DressCharacter(Character, OutfitFolder)
+	local Player = game.Players:GetPlayerFromCharacter(Character);
+	local PlayerAccessoryFolder = script:FindFirstChild(Player.Name) or Instance.new("Folder", script); PlayerAccessoryFolder.Name = Player.Name;
+	if (Player.HasAppearanceLoaded == false) then repeat wait() until Player.HasAppearanceLoaded == true end
+	if (Character:FindFirstChild("Shirt") ~= nil) then Character:FindFirstChild("Shirt"):Clone().Parent = PlayerAccessoryFolder end
+	if (Character:FindFirstChild("Pants") ~= nil) then Character:FindFirstChild("Pants"):Clone().Parent = PlayerAccessoryFolder end
+	
+	if (Character:FindFirstChild("Shirt") == nil) then local c = Instance.new("Shirt", Character); c.Name = "Shirt"; end
+	if (Character:FindFirstChild("Pants") == nil) then local c = Instance.new("Pants", Character); c.Name = "Pants"; end
+	
+	if OutfitFolder then
+		Character:WaitForChild("Shirt").ShirtTemplate = OutfitFolder.Shirt.ShirtTemplate;
+		Character:WaitForChild("Pants").PantsTemplate = OutfitFolder.Pants.PantsTemplate;
+	else
+		for _,v in pairs(Character:GetChildren()) do if (v:IsA("Shirt") or v:IsA("Pants")) then v:Destroy(); end end
+		for _,v in pairs(PlayerAccessoryFolder:GetChildren()) do if (v:IsA("Shirt") or v:IsA("Pants")) then v:Clone().Parent = Character; end end
+	end
+	
+	--[[accessories
+	local OkayAccessories = {
+		"FaceFrontAttachment";
+		"HatAttachment";
+		"NeckAttachment";
+		"HairAttachment";
+	}
+	
+	local function RemoveAttachments()
+		local function IsOkayAttachment(Object)
+			for _,v in pairs(OkayAccessories) do
+				if (Object:FindFirstChild(v)) then return true end
+			end
+			return false
+		end
+		for _,v in pairs(Character:GetChildren()) do
+			if (v:IsA("Accessory") and not IsOkayAttachment(v.Handle)) then
+				v.Parent = PlayerAccessoryFolder;
+			end
+		end
+	end
+	
+	local function ReturnAttachments()
+		
+	end]]
+	
+end
+--Trash Can
+function module.ThrowFoodAway(Player, Food)
+	if (Food.Parent.Parent.Name == "Cooking_Sheet") then
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Dirty_Cooking_Sheet");
+	elseif (Food.Parent.Parent.Name == "Plate") then
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Dirty_Plate");
+	end
+end
+
+--dish counters and functions
+function module.CountPlates()
+	local PlateStack = workspace.Kitchen_Stuff.Plate_Stack;
+	for i = 1, module.Plates do
+		local Plate = PlateStack:FindFirstChild("Plate"..i);
+		Plate.Transparency = 0;
+	end
+	for i = module.Plates+1, module.MaxPlates do
+		local Plate = PlateStack:FindFirstChild("Plate"..i);
+		Plate.Transparency = 1;
+	end
+end
+
+function module.CountCookingSheets()
+	local SheetStack = workspace.Kitchen_Stuff.Cooking_Sheet_Stack;
+	for i = 1, module.Cooking_Sheets do
+		local Sheet = SheetStack:FindFirstChild("Cooking_Sheet"..i);
+		if (Sheet == nil) then print(i); end
+		Sheet.Transparency = 0;
+	end
+	for i = module.Cooking_Sheets+1, module.Max_Cooking_Sheets do
+		local Sheet = SheetStack:FindFirstChild("Cooking_Sheet"..i);
+		Sheet.Transparency = 1;
+	end
+end
+
+function module.CountCups()
+	local CupStack = workspace.Kitchen_Stuff.Cup_Stack;
+	for i = 1, module.Cups do
+		local Cup = CupStack:FindFirstChild("Cup"..i);
+		Cup.Transparency = 0.5;
+	end
+	for i = module.Cups+1, module.MaxCups do
+		local Cup = CupStack:FindFirstChild("Cup"..i);
+		Cup.Transparency = 1;
+	end
+end
+
+function module.Grab_Plate(Player)
+	if (module.Plates > 0) then
+		if (Player.Variables:GetAttribute("Held_Item") == "None") then
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Plate");
+			module.Plates -= 1;
+			module.CountPlates();
+		end
+	else
+		print("There are no more plates");
+	end
+end
+
+function module.Grab_Cooking_Sheet(Player)
+	if (module.Cooking_Sheets > 0 and Player.Character.HumanoidRootPart.Anchored == false) then
+		if (Player.Variables:GetAttribute("Held_Item") == "None") then
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Cooking_Sheet");
+			module.Cooking_Sheets -= 1;
+			module.CountCookingSheets();
+		end
+	else
+		print("There are no more sheets");
+	end
+end
+
+function module.Grab_Cup(Player)
+	if (module.Cups > 0) then
+		if (Player.Variables:GetAttribute("Held_Item") == "None") then
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Cup");
+			module.Cups -= 1;
+			module.CountCups();
+		end
+	else
+		print("There are no more cups");
+	end
+end
+
+function module.Put_Away_Plate(Player)
+	if (Player.Variables:GetAttribute("Held_Item") == "Plate") then
+		local Item = Player.Character:FindFirstChild("Plate");
+		if (Item) then
+			if (#Item.Food:GetChildren() == 0) then --no food on plate
+				game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+				module.Plates += 1;
+				module.CountPlates();
+			end
+		end
+	end
+end
+
+function module.Put_Away_Cooking_Sheet(Player)
+	if (Player.Variables:GetAttribute("Held_Item") == "Cooking_Sheet") then
+		local Item = Player.Character:FindFirstChild("Cooking_Sheet");
+		if (Item) then
+			if (#Item.Food:GetChildren() == 0) then --no food on plate
+				game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+				module.Cooking_Sheets += 1;
+				module.CountCookingSheets();
+			end
+		end
+	end
+end
+
+function module.Put_Away_Cup(Player)
+	if (Player.Variables:GetAttribute("Held_Item") == "Cup") then
+		local Item = Player.Character:FindFirstChild("Cup");
+		if (Item) then
+			if (Item:GetAttribute("Drink") == "Empty") then --no liquid
+				game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+				module.Cups += 1;
+				module.CountCups();
+			end
+		end
+	end
+end
+
+function module.Check_Character_For_Dishes(Player, Character)
+	local function find(name)
+		if (Character:FindFirstChild(name)) then return true else return false end
+	end
+	if (find("Plate") or find("Dirty_Plate")) then
+		module.Plates += 1;
+	elseif (find("Cup") or find("Dirty_Cup")) then
+		module.Cups += 1;
+	elseif (find("Cooking_Sheet") or find("Dirty_Cooking_Sheet")) then
+		module.Cooking_Sheets += 1;
+	elseif (find("Dirty_Dishes")) then
+		local Cups = 0;
+		local Plates = 0;
+		for _,v in pairs(Character.Dirty_Dishes:GetChildren()) do
+			if (string.sub(v.Name, 1, 5) == "Plate") then Plates += 1; end
+			if (string.sub(v.Name, 1, 3) == "Cup") then Cups += 1; end
+		end
+		module.Plates += Plates;
+		module.Cups += Cups;
+	end
+end
+
+function module.Wash_Dish(Player, Sink)
+	if (Sink:GetAttribute("Active") == true) then
+		local Held = Player.Variables:GetAttribute("Held_Item");
+		if (Held == "Dirty_Plate" or Held == "Dirty_Cup" or Held == "Dirty_Cooking_Sheet") then
+			local MoneyMod = require(game.ServerStorage.Server_Modules.MoneyHandler);
+			MoneyMod.AddMoney(Player, 2)
+			local Clean = string.sub(Held, 7, string.len(Held));
+			local Character = Player.Character;
+			Character.HumanoidRootPart.Anchored = true;
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+			Character.HumanoidRootPart.CFrame = Sink.HumanoidRootPart.CFrame;
+			local Anim = game.ReplicatedStorage.Animations.Wash_Dishes;
+			local Humanoid = Character.Humanoid;
+			local Animation = Humanoid:LoadAnimation(Anim);
+			Animation:Play();
+			Sink.Bubbles.ParticleEmitter.Enabled = true;
+			Sink:SetAttribute("Active", false)
+			repeat wait() until Animation.IsPlaying == false or Character.Parent ~= workspace;
+			if (Character.Parent ~= workspace) then
+				-- for if player dies or leaves mid wash
+				if (Clean == "Plate") then module.Plates += 1; end
+				if (Clean == "Cup") then module.Cups += 1; end
+				if (Clean == "Cooking_Sheet") then module.Cooking_Sheets += 1; end
+			else
+				--player is still present
+				Character.HumanoidRootPart.Anchored = false;
+				game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", Clean)
+			end
+			Sink:SetAttribute("Active", true);
+			Sink.Bubbles.ParticleEmitter.Enabled = false;
+		end
+	end
+end
+
+function module.Dump_Drink(Player)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "Cup") then
+		local Item = Player.Character:FindFirstChild("Cup");
+		if (Item and Item:GetAttribute("Drink") ~= "Empty") then
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Cup");
+		end
+	end
+end
+
+function module.PutAway_Platter(Player)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "Platter") then
+		local Item = Player.Character:FindFirstChild("Platter");
+		if (Item) then
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+			if (Player.PlayerGui:FindFirstChild("Putaway_Platter")) then Player.PlayerGui.Putaway_Platter:Destroy(); end
+			game.ReplicatedStorage.Remotes.Client_Events:FireClient(Player, "Billboards", {workspace.Kitchen_Stuff.Platters.Platter_Deposit, false});
+		end
+	end
+end
+
+--Dishwashing areas
+function module.Count_Dirty_Cups()
+	local SheetStack = workspace.Kitchen_Stuff.Dirty_Cups;
+	for i = module.Max_Dirty_Cups, (module.Max_Dirty_Cups - module.Dirty_Cups), -1 do
+		local Sheet = SheetStack:FindFirstChild("Cup"..i);
+		Sheet.Transparency = .5;
+		for _,v in pairs(Sheet:GetChildren()) do
+			v.Transparency = 0;
+		end
+	end
+	for i = 1, (module.Max_Dirty_Cups - module.Dirty_Cups) do
+		local Sheet = SheetStack:FindFirstChild("Cup"..i);
+		Sheet.Transparency = 1;
+		for _,v in pairs(Sheet:GetChildren()) do
+			v.Transparency = 1;
+		end
+	end
+	workspace.Kitchen_Stuff.Dirty_Cups:SetAttribute("Cups", module.Dirty_Cups);
+end
+
+function module.Get_Dirty_Cup(Player)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "None" and module.Dirty_Cups > 0) then
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Dirty_Cup");
+		module.Dirty_Cups -= 1;
+		module.Count_Dirty_Cups();
+	end
+end
+
+function module.Place_Dirty_Cup(Player)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "Dirty_Cup" and module.Dirty_Cups < module.Max_Dirty_Cups) then
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+		module.Dirty_Cups += 1;
+		module.Count_Dirty_Cups();
+	elseif(Held == "Dirty_Dishes" and module.Dirty_Cups < module.Max_Dirty_Cups) then
+		local AmountOfHeldCups = 0;
+		local Item = Player.Character:FindFirstChild("Dirty_Dishes");
+		if (Item) then	
+			for _,v in pairs(Item:GetChildren()) do if (string.sub(v.Name, 1, 3) == "Cup") then AmountOfHeldCups += 1; end end
+		end
+		local SpacesLeft = module.Max_Dirty_Cups - module.Dirty_Cups;
+		if SpacesLeft > AmountOfHeldCups then
+			module.Dirty_Cups += AmountOfHeldCups;
+			for i = 1, AmountOfHeldCups do Item["Cup"..i]:Destroy(); end
+		else
+			module.Dirty_Cups = module.Max_Dirty_Cups;
+			for i = 1, SpacesLeft do Item["Cup"..i]:Destroy(); end
+		end
+		module.Count_Dirty_Cups();
+		if(#Item:GetChildren() == 2) then game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear"); end
+	end
+end
+--dirty cooking sheets
+function module.Count_Dirty_Cooking_Sheets()
+	local SheetStack = workspace.Kitchen_Stuff.Dirty_Cooking_Sheets;
+	for i = 1, module.Max_Dirty_Cooking_Sheets do
+		local Sheet = SheetStack:FindFirstChild("Sheet"..i);
+		Sheet.Transparency = 0;
+		for _,v in pairs(Sheet:GetChildren()) do
+			v.Transparency = 0;
+		end
+	end
+	for i = module.Max_Dirty_Cooking_Sheets, module.Dirty_Cooking_Sheets+1, -1 do
+		local Sheet = SheetStack:FindFirstChild("Sheet"..i);
+		Sheet.Transparency = 1;
+		for _,v in pairs(Sheet:GetChildren()) do
+			v.Transparency = 1;
+		end
+	end
+	workspace.Kitchen_Stuff.Dirty_Cooking_Sheets:SetAttribute("Sheets", module.Dirty_Cooking_Sheets);
+end
+
+function module.Get_Dirty_Cooking_Sheet(Player)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "None" and module.Dirty_Cooking_Sheets > 0) then
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Dirty_Cooking_Sheet");
+		module.Dirty_Cooking_Sheets -= 1;
+		module.Count_Dirty_Cooking_Sheets();
+	end
+end
+
+function module.Place_Dirty_Cooking_Sheet(Player)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "Dirty_Cooking_Sheet" and module.Dirty_Cooking_Sheets < module.Max_Dirty_Cooking_Sheets) then
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+		module.Dirty_Cooking_Sheets += 1;
+		module.Count_Dirty_Cooking_Sheets();
+	end
+end
+
+--dirty plates
+local function Count_Plate_Rack(Rack)
+	local Num = Rack:GetAttribute("Dishes");
+	local Max = Rack:GetAttribute("MaxDishes");
+	for i = 1, Num do
+		local Plate = Rack:FindFirstChild("Plate"..i);
+		Plate.Transparency = 0;
+		for _,v in pairs(Plate:GetChildren()) do v.Transparency = 0; end
+	end
+	for i = Max, Num+1, -1 do
+		local Plate = Rack:FindFirstChild("Plate"..i);
+		Plate.Transparency = 1;
+		for _,v in pairs(Plate:GetChildren()) do v.Transparency = 1; end
+	end
+end
+
+function module.Deposit_Dirty_Plate(Player, Rack)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "Dirty_Plate" and Rack and Rack:GetAttribute("Dishes") < Rack:GetAttribute("MaxDishes")) then
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+		Rack:SetAttribute("Dishes", Rack:GetAttribute("Dishes")+1);
+		Count_Plate_Rack(Rack)
+	elseif (Held == "Dirty_Dishes") then
+		local AmountOfHeldPlates = 0;
+		local Item = Player.Character:FindFirstChild("Dirty_Dishes");
+		if (Item) then	
+			for _,v in pairs(Item:GetChildren()) do if (string.sub(v.Name, 1, 5) == "Plate") then AmountOfHeldPlates += 1; end end
+		end
+		local SpacesLeft = Rack:GetAttribute("MaxDishes") - Rack:GetAttribute("Dishes");
+		if SpacesLeft > AmountOfHeldPlates then
+			Rack:SetAttribute("Dishes", Rack:GetAttribute("Dishes") + AmountOfHeldPlates);
+			for i = 1, AmountOfHeldPlates do Item["Plate"..i]:Destroy(); end
+		else
+			Rack:SetAttribute("Dishes", Rack:GetAttribute("MaxDishes"));
+			for i = 4, 5-SpacesLeft, -1 do Item["Plate"..i]:Destroy(); end
+		end
+		Count_Plate_Rack(Rack)
+		if(#Item:GetChildren() == 2) then game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear"); end
+	end
+end
+
+function module.Collect_Dirty_Plate(Player, Rack)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "None" and Rack and Rack:GetAttribute("Dishes") > 0) then
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Dirty_Plate");
+		Rack:SetAttribute("Dishes", Rack:GetAttribute("Dishes")-1);
+		Count_Plate_Rack(Rack)
+	end
+end
+
+function module.Collect_Table_Dishes(Player, Table)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "None" and Table and #Table.Mess:GetChildren() > 0) then
+		local MoneyMod = require(game.ServerStorage.Server_Modules.MoneyHandler);
+		MoneyMod.AddMoney(Player, 2)
+		local Dirty_Dish_Model = game.ReplicatedStorage.Models.Dirty_Dishes:Clone();
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Dual_Wield", "Dirty_Dishes", Dirty_Dish_Model);
+		local MessCount = #Table.Mess:GetChildren()/2;
+		for _,v in pairs(Table.Mess:GetChildren()) do v:Destroy(); end
+		for i = 4, MessCount+1, -1 do
+			local Plate = Dirty_Dish_Model["Plate"..i];
+			local Cup = Dirty_Dish_Model["Cup"..i];
+			Plate:Destroy();
+			Cup:Destroy();
+		end
+	end
+end
+
+function module.PullFromStack(Player, Stack)
+	local Held = Player.Variables:GetAttribute("Held_Item");
+	if (Held == "None" and Stack and Stack:GetAttribute("Dishes") > 0) then
+		if (Stack.Name == "Plate_Stack_Player") then
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Dirty_Plate");
+			Stack:FindFirstChild("Plate"..Stack:GetAttribute("Dishes")):Destroy();
+			Stack:SetAttribute("Dishes", Stack:GetAttribute("Dishes") - 1);
+			if Stack:GetAttribute("Dishes") == 0 then Stack:Destroy(); end
+		elseif (Stack.Name == "Cup_Stack_Player") then
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Dirty_Cup");
+			Stack:FindFirstChild("Cup"..Stack:GetAttribute("Dishes")):Destroy();
+			Stack:SetAttribute("Dishes", Stack:GetAttribute("Dishes") - 1);
+			if Stack:GetAttribute("Dishes") == 0 then Stack:Destroy(); end
+		end
+	end
+end
+
+--[[Platter Queue list board]]--
+local function UpdateFoodList()
+	local OrderList = workspace.Kitchen_Stuff.OrderList;
+	local Frame = OrderList.SurfaceGui.Frame;
+	for _,v in pairs(Frame:GetChildren()) do if v:IsA("ImageLabel") then v:Destroy(); end end
+	for _,v in pairs(module.Platter_Queue) do
+		local OrderDetails = v.OrderDetails;
+		for _,Item in pairs(OrderDetails:GetChildren()) do
+			if (Item:GetAttribute("Deposited") == false) then
+				local Food = script.FoodExample:Clone();
+				Food.Name = Item.Value;
+				if (game.ReplicatedStorage.Images:FindFirstChild(Food.Name)) then Food.Image = game.ReplicatedStorage.Images:FindFirstChild(Food.Name).Texture; end
+				Food.Parent = Frame;
+			end
+		end
+	end
+end
+
+--[[Ordering food]]--
+local Platter_Counter = workspace.Kitchen_Stuff.Platter_Counter;
+
+function OrderDetailBillboard(Billboard, PlatterDictionary)
+	Billboard.Enabled = true;
+	local Folder = PlatterDictionary.OrderDetails;
+	--uncheck everything
+	for _,v in pairs(Billboard.Frame:GetChildren()) do
+		if (v:IsA("ImageLabel")) then v.Check.Visible = false; end
+	end
+	--create entries
+	for _,v in pairs(Billboard.Frame:GetChildren()) do
+		if (v:IsA("ImageLabel")) then 
+			if (Folder:FindFirstChild(v.Name)) then
+				--has entry
+				if (game.ReplicatedStorage.Images:FindFirstChild(Folder:FindFirstChild(v.Name).Value)) then
+					v.Image = game.ReplicatedStorage.Images:FindFirstChild(Folder:FindFirstChild(v.Name).Value).Texture;
+				end
+				v.Naming.Text = TranslateUnderscore(Folder:FindFirstChild(v.Name).Value);
+				v.Visible = true;
+			else
+				--no item exists
+				v.Visible = false;
+			end
+		end
+	end
+	Billboard.Frame.Table.Text = TranslateUnderscore(Folder.Table.Value.Name);
+end
+
+function ShowPlatter(PlatterDictionary)
+	local Order = Platter_Counter:FindFirstChild("Order"..PlatterDictionary.OrderPlate);
+	Order.Root.Transparency = 0;
+	Order:SetAttribute("Active", true);
+	Order.Food_Platter:SetAttribute("Active", true);
+	OrderDetailBillboard(Order.Platter_Bill, PlatterDictionary);
+end
+
+function module.Pickup_Platter(Player, OrderPlatter)
+	local Variables = Player.Variables;
+	if (Variables:GetAttribute("Held_Item") == "None") then
+		OrderPlatter.Parent = script;
+		local PlayerCopyPlatter = OrderPlatter:Clone(); PlayerCopyPlatter.Root.Anchored = false;
+		PlayerCopyPlatter.Name = "Platter";
+		PlayerCopyPlatter.Order_Complete:Destroy();
+		PlayerCopyPlatter.Platter_Bill:Destroy();
+		local OrderDetails = OrderPlatter.OrderDetails;
+		local Table = OrderDetails.Table.Value;
+		local BoothSelection = Table.BoothSelection;
+		local Att2 = BoothSelection:FindFirstChild("Attachment") or Instance.new("Attachment", BoothSelection);
+		local Att1 = Instance.new("Attachment", PlayerCopyPlatter.Root);
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Collect", "Platter", PlayerCopyPlatter);
+		game.ReplicatedStorage.Remotes.Client_Functions:InvokeClient(Player, "Beam", {Att1, Att2});
+		print("Order goes to table: "..Table.Name);
+		local Character = true;
+		spawn(function()
+			wait(60)
+			Character = false
+		end)
+		local CharEvent = Player.Character.AncestryChanged:Connect(function(_, parent)
+			if not parent then
+				Character = false;
+			end
+		end)
+		repeat wait() until Character == false or Table:GetAttribute("Food_Delivered") == true;
+		CharEvent:Disconnect();
+		if (Table:GetAttribute("Food_Delivered") == true) then
+			print("Food was delivered")
+			--get rid of food
+			OrderPlatter.Parent = workspace.Kitchen_Stuff.Platter_Counter;
+			for _,v in pairs(OrderPlatter.Food:GetChildren()) do --destroys from server but stays on client??
+				v:Destroy();
+			end
+			--hide done billboard
+			OrderPlatter.Order_Complete.Enabled = false;
+			OrderPlatter:SetAttribute("Pickup", false)
+			OrderPlatter.Root.Transparency = 1;
+			game.ReplicatedStorage.Remotes.Client_Functions:InvokeClient(Player, "Change_Beam", {PlayerCopyPlatter.Root, game.Workspace.Kitchen_Stuff.Platters.Root.Attachment})
+			--since order is finished, free up placement queue spot
+			for num,v in pairs(module.Platter_Queue) do
+				if (v.OrderDetails == OrderDetails) then
+					table.remove(module.Platter_Queue, num);
+					break
+				end
+			end
+			--check to add another placement if there is mroe to the queue
+			Check_Order_Queue()
+		else
+			OrderPlatter.Parent = workspace.Kitchen_Stuff.Platter_Counter;
+			game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear")
+		end
+		OrderDetails:Destroy();
+		Table:SetAttribute("Food_Delivered", false);
+	end
+end
+
+function Check_Order_Queue()
+	if (#module.Platter_Queue < 4 and #module.Order_Queue > 0) then
+		local OrderPlacement = #module.Platter_Queue+1;
+		--[[for num,v in pairs(module.Platter_Queue) do --shouldnt need this section if order queue entry gets removed once in platter queue
+			if v.OrderDetails ~= module.Order_Queue[num] then
+				OrderPlacement = num;
+				break
+			end
+		end]]
+		local mod = module.Order_Queue[1] --first entry is basically the next in line
+		table.remove(module.Order_Queue, 1);
+		local OrderPlateNum = 1;
+		repeat 
+			wait()
+			local Found = false;
+			for _,v in pairs(module.Platter_Queue) do
+				if (v.OrderPlate == OrderPlateNum) then
+					Found = true; OrderPlateNum += 1; break
+				end
+			end
+		until Found == false;
+		print("Orderplate number is "..tostring(OrderPlateNum))
+		--find first order module not in platter queue
+		local PlatterQueueDictionary = {
+			["OrderDetails"] = mod;
+			["OrderPlate"] = OrderPlateNum;
+		}
+		table.insert(module.Platter_Queue, PlatterQueueDictionary);
+		ShowPlatter(PlatterQueueDictionary)
+	end
+end
+
+function module.AddOrder(OrderDetails)
+	table.insert(module.Order_Queue, OrderDetails);
+	Check_Order_Queue();
+end
+
+function module.ProcessOrder(Player)
+	if (Player.Character and Player.Character:FindFirstChild("OrderDetails")) then
+		local MoneyMod = require(game.ServerStorage.Server_Modules.MoneyHandler);
+		MoneyMod.AddMoney(Player, 3)
+		print("Processing order")
+		game.ServerStorage.GUI.Confetti:Clone().Parent = Player.PlayerGui;
+		local OrderDetails = Player.Character.OrderDetails;
+		game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+		OrderDetails.Parent = script;
+		local Table = OrderDetails["Table"].Value;
+		Table.Data.OrderTaken.Value = true;
+		game.ReplicatedStorage.Remotes.Client_Functions:InvokeClient(Player, "BellGui", {workspace.Kitchen_Stuff.Orders.Bell, false});
+		Player.PlayerGui.OrderNoteTip:Destroy();
+		Player.PlayerGui.Notepad:Destroy();
+		module.AddOrder(OrderDetails)
+		UpdateFoodList()
+	end
+end
+
+function DepositFoodItem(Player, OrderPlatterModel, Item, SlotName)
+	--make sure item is up to quality standard
+	local ItemRootPart = OrderPlatterModel:FindFirstChild(SlotName);
+	Item.Root.Hold_Root:Destroy();
+	Item.Parent = OrderPlatterModel.Food;
+	local Platter_Weld = Instance.new("Weld", Item.Root);
+	Platter_Weld.Name = "Platter_Weld";
+	Platter_Weld.Part0 = Item.Root;
+	Platter_Weld.Part1 = ItemRootPart;
+	game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(Player, "Clear");
+	UpdateFoodList();
+end
+
+function IsFoodValue(name)
+	if (name == "Food1") then return true end
+	if (name == "Food2") then return true end
+	if (name == "Food3") then return true end
+	if (name == "Food4") then return true end
+	if (name == "Drink1") then return true end
+	if (name == "Drink2") then return true end
+	if (name == "Drink3") then return true end
+	if (name == "Drink4") then return true end
+end
+
+function Check_Order_Platter(OrderPlatter, OrderDetails) --finished order
+	local Satisfied = true;
+	for _,v in pairs(OrderDetails:GetChildren()) do
+		if (IsFoodValue(v.Name)) then
+			if (v:GetAttribute("Deposited") == false) then Satisfied = false; break end
+		end
+	end
+	if (Satisfied) then
+		--order complete
+		OrderDetails.Parent = OrderPlatter;
+		local Remote = OrderPlatter.Food_Platter;
+		Remote:SetAttribute("Active", true);
+		OrderPlatter.Platter_Bill.Enabled = false;
+		OrderPlatter.Order_Complete.Enabled = true;
+		print("Ready for waiter to pick up");
+		OrderPlatter:SetAttribute("Pickup", true)
+		OrderPlatter:SetAttribute("Active", false);
+	end
+end
+
+function module.Deposit_Food_To_Platter(Player, OrderPlatterModel)
+	local Held_Item = Player.Variables:GetAttribute("Held_Item");
+	local Item = Player.Character:FindFirstChild(Held_Item);
+	if (Item) then
+		local ItemName = "";
+		if (Held_Item == "Cup") then ItemName = Item:GetAttribute("Drink"); end
+		if (Held_Item == "Plate" and #Item.Food:GetChildren() == 0) then return end
+		if (Held_Item == "Plate" and Item.Food:FindFirstChildOfClass("Model"):GetAttribute("Quality") < 0.4) then
+			game.ReplicatedStorage.Remotes.Notification_Client:FireClient(Player, "The food is frozen!", Color3.fromRGB(0, 170, 255))
+			return
+		elseif (Held_Item == "Plate" and Item.Food:FindFirstChildOfClass("Model"):GetAttribute("Quality") > .6) then
+			game.ReplicatedStorage.Remotes.Notification_Client:FireClient(Player, "The customers will not eat burnt food!", Color3.fromRGB(170, 0, 255))
+			return
+		end
+		if (Held_Item == "Plate") then ItemName = Item.Food:FindFirstChildOfClass("Model").Name; end
+		local PlatterQueue = nil;
+		for _,v in pairs(module.Platter_Queue) do if ("Order"..v.OrderPlate == OrderPlatterModel.Name) then PlatterQueue = v; break end end
+		if (PlatterQueue == nil) then warn("Unable to find platter"); return end
+		--search if item is needed
+		local ItemNeeded = false;
+		local OrderDetails = PlatterQueue.OrderDetails; --folder
+		local Deposited = false;
+		for _,v in pairs(OrderDetails:GetChildren()) do
+			if (v.Value == ItemName and v:GetAttribute("Deposited") == false) then
+				v:SetAttribute("Deposited", true);
+				--send food model to platter
+				DepositFoodItem(Player, OrderPlatterModel, Item, v.Name);
+				--check gui item off
+				local Gui = OrderPlatterModel.Platter_Bill;
+				local Entry = Gui.Frame:FindFirstChild(v.Name);
+				Entry.Check.Visible = true;
+				Item.Name = ItemName;
+				--check if order is filled
+				Check_Order_Platter(OrderPlatterModel, OrderDetails);
+				Deposited = true;
+				break
+			end
+		end
+		if (Deposited == false) then --if food item doesnt belong (wont cycle functions if not)
+			game.ReplicatedStorage.Remotes.Notification_Client:FireClient(Player, "This item is not part of the order!", Color3.fromRGB(85, 255, 255));
+		end
+	end
+end
+
+--Billboards
+
+local Client_Events = game.ReplicatedStorage.Remotes.Client_Events;
+function module.SetVisibilityOnBillboard(Billboard, Visiblity, Occupation, SpecificPlayerOnly)
+	if (SpecificPlayerOnly) then
+		Client_Events:FireClient(SpecificPlayerOnly, "Billboards", {Billboard, Visiblity, Occupation});
+	else
+		Client_Events:FireAllClients("Billboards", {Billboard, Visiblity, Occupation});
+	end
+end
+
+--Restaurnt Main Functions
+
+function module.CloseUpRestaurant()
+	--make customers leave
+	for _,g in pairs(workspace.Tables:GetChildren()) do
+		local Group = g.Data.Occupied.Value;
+		local BoothEnter = g.BoothEnter;
+		if (Group ~= nil) then
+			for _,v in pairs(Group:GetChildren()) do
+				if (v:IsA("Model")) then
+					v.HumanoidRootPart.Anchored = false
+					for _,v in pairs(v.Humanoid:GetPlayingAnimationTracks()) do if v.Name == "Customer_Sit" then v:Stop(); end end
+					wait()
+					v.HumanoidRootPart.CFrame = BoothEnter.CFrame * CFrame.new(0, 2.5, 0);
+					v.Set_Walk_Destination:Fire(BoothEnter, workspace.NavPoints.Exit);
+					spawn(function()
+						repeat wait() until v:FindFirstChild("HumanoidRootPart") == nil or ((v.HumanoidRootPart.Position - workspace.NavPoints.Exit.Position).magnitude < 3)
+						v:Destroy();
+					end)
+					spawn(function()
+						local function Destroyed(x)
+							if x.Parent then return false end
+							local _, result = pcall(function() x.Parent = x end)
+							return result:match("locked") and true or false
+						end
+						wait(60);
+						if (Destroyed(v) == false) then v:Destroy(); end 
+					end)
+				end
+			end
+		end
+	end
+	--npcs in line
+	for _,g in pairs(workspace.NPCs:GetChildren()) do
+		for _,v in pairs(g:GetChildren()) do
+			if (v:IsA("Model")) then
+				if (v:FindFirstChild("Take_Seat_Gui")) then v.Take_Seat_Gui:Destroy(); end
+				if (v:FindFirstChild("Take_Seat")) then v.Take_Seat:Destroy(); end
+				v.Set_Walk_Destination:Fire(nil, workspace.NavPoints.Exit);
+				spawn(function()
+					repeat wait() 
+					until 
+					(v:FindFirstChild("HumanoidRootPart") == nil or (v.HumanoidRootPart.Position - workspace.NavPoints.Exit.Position).magnitude < 3)
+					v:Destroy();
+				end)
+			end
+		end
+	end
+	--reset menus
+	for _,tab in pairs(workspace.Tables:GetChildren()) do
+		for _,m in pairs(tab.Menus:GetChildren()) do
+			for _,part in pairs(m:GetChildren()) do
+				part.Transparency = 1;
+				if (part:FindFirstChild("Decal")) then part.Decal.Transparency = 1; end
+			end
+		end
+	end
+	--leave messes if there are food
+	--reset tables
+	for _,v in pairs(workspace.Tables:GetChildren()) do
+		v.Table_Control.Disabled = true;
+		game.ReplicatedStorage.Remotes.Client_Events:FireAllClients("Billboards", {v.OrderGui, false})
+		v.OrderGui.Enabled = false;
+		v.Data.Occupied.Value = nil;
+		v.Data.OrderTaken.Value = false;
+		v:SetAttribute("Food_Delivered", false);
+		v:SetAttribute("Table", true);
+		v.Data.Seat1.Value = nil;
+		v.Data.Seat2.Value = nil;
+		v.Data.Seat3.Value = nil;
+		v.Data.Seat4.Value = nil;
+		v.Table_Control.Disabled = false;
+	end
+	--clear orders
+	module.Order_Queue = {};
+	module.Platter_Queue = {};
+	for _,v in pairs(script:GetChildren()) do if v.Name == "OrderDetails" then v:Destroy(); end end
+	for _,v in pairs(workspace.Kitchen_Stuff.Platter_Counter:GetChildren()) do
+		if (v:IsA("Model")) then
+			for _,food in pairs(v.Food:GetChildren()) do food:Destroy(); end
+			v:SetAttribute("Active", false);
+			v:SetAttribute("Pickup", false);
+			v.Order_Complete.Enabled = false;
+			v.Platter_Bill.Enabled = false;
+			v.Root.Transparency = 1;
+		end
+	end
+	--clear customer queue
+	game.ReplicatedStorage.Remotes.Clear_Customer_Queue:Invoke();
+	--update list
+	UpdateFoodList();
+end
+
+function module.EmployeesGoHome()
+	game.ReplicatedStorage.Server_Variables:SetAttribute("CanWork", false);
+	for _,v in pairs(game.Players:GetChildren()) do
+		if (v.Character and v.Character:IsDescendantOf(workspace) and v:FindFirstChild("Variables")) then
+			if (v.Variables:GetAttribute("Inside_Restaurant")) then
+				v.Character.HumanoidRootPart.CFrame = CFrame.new(workspace.Restaurant.Restaurant_Teleport.Position + Vector3.new(math.random(-4,4), 0, math.random(-4,4)));
+				v.Variables:SetAttribute("Inside_Restaurant", true)
+				module.DressCharacter(v.Character);
+				module.Check_Character_For_Dishes(v, v.Character);
+				game.ReplicatedStorage.Remotes.Player_Held_Item:Invoke(v, "Clear")
+			end
+		end
+	end
+	for _,v in pairs(workspace.Restaurant.InvisGates:GetChildren()) do v.CanCollide = true; end
+end
+
+function module.ToggleLights(state)
+	for _,q in pairs(workspace.Restaurant.LightModels:GetChildren()) do
+		if state == false then
+			q.LightPart.Material = Enum.Material.SmoothPlastic;
+			q.LightPart.BrickColor = BrickColor.Black();
+			workspace.Restaurant.Restaurant_Sign.Material = Enum.Material.SmoothPlastic;
+		else
+			q.LightPart.Material = Enum.Material.Neon;
+			q.LightPart.BrickColor = BrickColor.new("Lily white");
+			workspace.Restaurant.Restaurant_Sign.Material = Enum.Material.Neon;
+		end
+	end
+	for _,v in pairs(workspace.Restaurant.Lights:GetChildren()) do
+		if (state == false) then
+			v.PointLight.Brightness = 0.05;
+		else
+			v.PointLight.Brightness = 0.5;
+		end
+	end
+	for _,v in pairs(workspace.Restaurant.Decoration.Kitchen_Lights:GetChildren()) do
+		for _, part in pairs(v:GetChildren()) do
+			if (part.Name == "Light") then
+				if (state == false) then
+					part.Material = Enum.Material.SmoothPlastic;
+					part.BrickColor = BrickColor.Black();
+				else
+					part.Material = Enum.Material.Neon;
+					part.Color = Color3.fromRGB(255, 255, 204);
+				end
+			end
+		end
+	end
+end
+
+function module.OpenRestaurant()
+	game.ReplicatedStorage.Server_Variables:SetAttribute("CanWork", true);
+	game.ReplicatedStorage.Server_Variables:SetAttribute("Restaurant_Open", true);
+	module.ToggleLights(true);
+	for _,v in pairs(workspace.Restaurant.InvisGates:GetChildren()) do v.CanCollide = false; end
+end
+
+return module
